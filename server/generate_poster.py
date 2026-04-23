@@ -11,13 +11,13 @@ import os
 import fitz
 from PIL import Image, ImageDraw, ImageFont
 
-# PDF原始尺寸: 2748 x 4119
-# 各区域坐标（PDF坐标系）：
-# 图一白色框: (540, 1140) to (2230, 2000)
-# INFORMATION黑色框: (640, 2120) to (2210, 2300)
-# 问题1答案框: (1420, 2760) to (2400, 3040)
-# 问题2答案框: (1420, 3120) to (2400, 3380)
-# 问题3答案框: (1420, 3440) to (2400, 3700)
+# 新海报PDF尺寸: 2748 x 4096
+# 各区域坐标（PDF坐标系，原点在左上角）：
+# 图一白色框:       (462, 886)  to (2598, 1636)
+# INFORMATION黑框:  (499, 2123) to (2023, 2323)
+# 问题1答案框:      (1411, 2710) to (2048, 2935)
+# 问题2答案框:      (1411, 3035) to (2048, 3260)
+# 问题3答案框:      (1411, 3360) to (2048, 3584)
 
 FONT_BOLD = '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc'
 FONT_REGULAR = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
@@ -35,6 +35,18 @@ def create_text_image(text, width, height, font_path, font_size,
     bbox = draw.textbbox((0, 0), text, font=font)
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
+
+    # Auto-shrink if text is too wide
+    if text_w > width * 0.92:
+        shrink_ratio = (width * 0.92) / text_w
+        new_size = max(20, int(font_size * shrink_ratio))
+        try:
+            font = ImageFont.truetype(font_path, new_size)
+        except Exception:
+            pass
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
 
     if align == 'center':
         x = (width - text_w) / 2
@@ -81,7 +93,10 @@ def generate_poster(params):
         img_offset_y: float,  # 垂直偏移 -1000~1000
     }
     """
+    # 优先使用新海报模板
     template_path = os.path.join(os.path.dirname(__file__), '../assets/poster_template.pdf')
+    if not os.path.exists(template_path):
+        template_path = '/home/ubuntu/upload/pasted_file_XWRBKS_黑.pdf'
     if not os.path.exists(template_path):
         template_path = '/home/ubuntu/upload/pasted_file_WEBSqd_2050海报.pdf'
 
@@ -106,10 +121,10 @@ def generate_poster(params):
             if img.mode != 'RGB':
                 img = img.convert('RGB')
 
-            # 图一白色框区域
-            img_rect = fitz.Rect(540, 1140, 2230, 2000)
-            box_w = img_rect.width   # 1690
-            box_h = img_rect.height  # 860
+            # 图一白色框区域 (新海报)
+            img_rect = fitz.Rect(462, 886, 2598, 1636)
+            box_w = img_rect.width   # 2136
+            box_h = img_rect.height  # 750
 
             img_w, img_h = img.size
             img_ratio = img_w / img_h
@@ -133,11 +148,6 @@ def generate_poster(params):
             center_x = (new_w - box_w) / 2 - img_offset_x
             center_y = (new_h - box_h) / 2 - img_offset_y
 
-            left = int(max(0, center_x))
-            top = int(max(0, center_y))
-            right = int(min(new_w, left + box_w))
-            bottom = int(min(new_h, top + box_h))
-
             # 创建画布并粘贴
             canvas = Image.new('RGB', (int(box_w), int(box_h)), (30, 30, 30))
             paste_x = max(0, int(-center_x))
@@ -160,7 +170,7 @@ def generate_poster(params):
 
     # ===== 2. 填入称呼和家乡 =====
     if name or hometown:
-        info_rect = fitz.Rect(640, 2120, 2210, 2300)
+        info_rect = fitz.Rect(499, 2123, 2023, 2323)
         parts = []
         if name:
             parts.append(f"@{name}")
@@ -172,9 +182,9 @@ def generate_poster(params):
 
     # ===== 3. 填入三个问题回答 =====
     answers = [
-        (coolest, fitz.Rect(1420, 2760, 2400, 3040)),
-        (reason,  fitz.Rect(1420, 3120, 2400, 3380)),
-        (harvest, fitz.Rect(1420, 3440, 2400, 3700)),
+        (coolest, fitz.Rect(1411, 2710, 2048, 2935)),
+        (reason,  fitz.Rect(1411, 3035, 2048, 3260)),
+        (harvest, fitz.Rect(1411, 3360, 2048, 3584)),
     ]
     for answer, rect in answers:
         if answer:
