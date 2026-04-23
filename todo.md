@@ -28,3 +28,8 @@
 
 ## 功能变更
 - [x] 将下载PDF改为导出PNG图片（直接从Canvas高清导出，无需后端）
+
+## 海报更新（最新版）
+- [x] 将底图替换为最新PDF转换的PNG (poster_bg_latest_baf0124a.png)
+- [x] 精确校准新海报各区域坐标（图片框、INFORMATION框、三个答案框）
+- [x] 更新Canvas底图URL和坐标常量
