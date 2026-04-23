@@ -20,7 +20,7 @@ export function registerPosterRoutes(app: ReturnType<typeof Router>["stack"] ext
     const inputJson = JSON.stringify(params);
 
     const child = execFile(
-      "python3.11",
+      "/usr/bin/python3.11",
       [scriptPath],
       { maxBuffer: 20 * 1024 * 1024 }, // 20MB buffer
       (error, stdout, stderr) => {
