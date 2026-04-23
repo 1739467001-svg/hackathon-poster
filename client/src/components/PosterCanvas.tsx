@@ -1,49 +1,50 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 
-// 新海报PDF尺寸: 2748 x 4096
-// 预览底图尺寸: 1100 x 1639 (0.4003x缩放)
+// PDF原始尺寸: 2748 x 4119
+// 预览底图尺寸: 1100 x 1648 (0.4x缩放)
 const PDF_W = 2748;
-const PDF_H = 4096;
+const PDF_H = 4119;
 const PREVIEW_W = 1100;
-const PREVIEW_H = 1639;
+const PREVIEW_H = 1648;
 const PDF_TO_PREVIEW = PREVIEW_W / PDF_W; // 0.4003
 
-// 各区域坐标（像素级测量，直接使用预览图坐标）
+// 各区域在预览图(1100x1648)中的坐标
+// PDF坐标 * PDF_TO_PREVIEW = 预览坐标
 const REGIONS = {
-  // 图一白色框: 预览图(174,310)~(999,619)
+  // 图一白色框: PDF(540,1140)~(2230,2000)
   photoBox: {
-    x: 174,
-    y: 310,
-    w: 999 - 174,  // 825
-    h: 619 - 310,  // 309
+    x: Math.round(540 * PDF_TO_PREVIEW),   // 216
+    y: Math.round(1140 * PDF_TO_PREVIEW),  // 456
+    w: Math.round((2230 - 540) * PDF_TO_PREVIEW),  // 676
+    h: Math.round((2000 - 1140) * PDF_TO_PREVIEW), // 344
   },
-  // INFORMATION框: 预览图(130,820)~(999,939)
+  // INFORMATION框: PDF(640,2120)~(2210,2300)
   infoBox: {
-    x: 130,
-    y: 820,
-    w: 999 - 130,  // 869
-    h: 939 - 820,  // 119
+    x: Math.round(640 * PDF_TO_PREVIEW),   // 256
+    y: Math.round(2120 * PDF_TO_PREVIEW),  // 848
+    w: Math.round((2210 - 640) * PDF_TO_PREVIEW),  // 628
+    h: Math.round((2300 - 2120) * PDF_TO_PREVIEW), // 72
   },
-  // 问题1答案框: 预览图(540,1060)~(1009,1199)
+  // 问题1答案框: PDF(1420,2760)~(2400,3040)
   q1Box: {
-    x: 540,
-    y: 1060,
-    w: 1009 - 540,  // 469
-    h: 1199 - 1060, // 139
+    x: Math.round(1420 * PDF_TO_PREVIEW),  // 568
+    y: Math.round(2760 * PDF_TO_PREVIEW),  // 1104
+    w: Math.round((2400 - 1420) * PDF_TO_PREVIEW), // 392
+    h: Math.round((3040 - 2760) * PDF_TO_PREVIEW), // 112
   },
-  // 问题2答案框: 预览图(540,1210)~(1009,1349)
+  // 问题2答案框: PDF(1420,3120)~(2400,3380)
   q2Box: {
-    x: 540,
-    y: 1210,
-    w: 1009 - 540,  // 469
-    h: 1349 - 1210, // 139
+    x: Math.round(1420 * PDF_TO_PREVIEW),  // 568
+    y: Math.round(3120 * PDF_TO_PREVIEW),  // 1248
+    w: Math.round((2400 - 1420) * PDF_TO_PREVIEW), // 392
+    h: Math.round((3380 - 3120) * PDF_TO_PREVIEW), // 104
   },
-  // 问题3答案框: 预览图(540,1360)~(1009,1499)
+  // 问题3答案框: PDF(1420,3440)~(2400,3700)
   q3Box: {
-    x: 540,
-    y: 1360,
-    w: 1009 - 540,  // 469
-    h: 1499 - 1360, // 139
+    x: Math.round(1420 * PDF_TO_PREVIEW),  // 568
+    y: Math.round(3440 * PDF_TO_PREVIEW),  // 1376
+    w: Math.round((2400 - 1420) * PDF_TO_PREVIEW), // 392
+    h: Math.round((3700 - 3440) * PDF_TO_PREVIEW), // 104
   },
 };
 
@@ -65,7 +66,7 @@ interface Props {
   width?: number;
 }
 
-const BG_URL = "/manus-storage/poster_bg_new_c184f63d.png";
+const BG_URL = "/manus-storage/poster_bg_1841a9bb.png";
 
 export default function PosterCanvas({ data, onChange, width = 440 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

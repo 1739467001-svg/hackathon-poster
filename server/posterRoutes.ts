@@ -19,15 +19,10 @@ export function registerPosterRoutes(app: ReturnType<typeof Router>["stack"] ext
     const scriptPath = path.join(__dirname, "generate_poster.py");
     const inputJson = JSON.stringify(params);
 
-    // Clear Python 3.13 env vars that would pollute Python 3.11 stdlib loading
-    const cleanEnv = { ...process.env };
-    delete cleanEnv.PYTHONHOME;
-    delete cleanEnv.PYTHONPATH;
-
     const child = execFile(
-      "/usr/bin/python3.11",
+      "python3.11",
       [scriptPath],
-      { maxBuffer: 20 * 1024 * 1024, env: cleanEnv }, // 20MB buffer
+      { maxBuffer: 20 * 1024 * 1024 }, // 20MB buffer
       (error, stdout, stderr) => {
         if (error) {
           console.error("[PosterGen] Error:", error.message);

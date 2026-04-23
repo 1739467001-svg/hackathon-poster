@@ -21,7 +21,7 @@ describe("generate_poster.py", () => {
       img_offset_y: 0,
     };
 
-    const result = execFileSync("/usr/bin/python3.11", [scriptPath], {
+    const result = execFileSync("python3.11", [scriptPath], {
       input: JSON.stringify(params),
       maxBuffer: 20 * 1024 * 1024,
     });
@@ -48,7 +48,7 @@ describe("generate_poster.py", () => {
       img_offset_y: 0,
     };
 
-    const result = execFileSync("/usr/bin/python3.11", [scriptPath], {
+    const result = execFileSync("python3.11", [scriptPath], {
       input: JSON.stringify(params),
       maxBuffer: 20 * 1024 * 1024,
     });
@@ -70,7 +70,7 @@ describe("generate_poster.py", () => {
       img_offset_y: 0,
     };
 
-    const result = execFileSync("/usr/bin/python3.11", [scriptPath], {
+    const result = execFileSync("python3.11", [scriptPath], {
       input: JSON.stringify(params),
       maxBuffer: 20 * 1024 * 1024,
     });
