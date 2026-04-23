@@ -171,7 +171,7 @@ export default function Home() {
                 }}
               >
                 <span className="font-orbitron text-xs" style={{ color: "var(--text-muted)", fontSize: "9px" }}>
-                  2200 × 3279 PX · A4
+                  2200 × 3278 PX · A4
                 </span>
                 <span className="font-orbitron text-xs" style={{ color: "var(--orange)", fontSize: "9px" }}>
                   PNG EXPORT
@@ -244,7 +244,7 @@ export default function Home() {
                 )}
               </button>
               <p className="text-center mt-2 font-orbitron" style={{ color: "var(--text-muted)", fontSize: "10px", letterSpacing: "0.08em" }}>
-                OUTPUT: PNG · 2200 × 3279 PX · HIGH QUALITY
+                OUTPUT: PNG · 2200 × 3278 PX · HIGH QUALITY
               </p>
             </div>
           </div>

@@ -344,12 +344,12 @@ export default function ControlPanel({ data, onChange }: Props) {
                 Q2
               </div>
               <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                你为什么报名参加黑客松？
+                黑客松什么地方吸引你？
               </span>
             </div>
             <input
               type="text"
-              placeholder="报名原因"
+              placeholder="吸引你的地方"
               value={data.reason}
               onChange={(e) => onChange({ reason: e.target.value })}
               maxLength={30}

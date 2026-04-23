@@ -1,44 +1,44 @@
 import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from "react";
 
-// 新背景图尺寸: 2200 x 3279
+// 新背景图尺寸: 2200 x 3278
 const PREVIEW_W = 2200;
-const PREVIEW_H = 3279;
-// 各区域在背景图(2200x3279)中的坐标（基于新海报模板精确测量）
+const PREVIEW_H = 3278;
+// 各区域在背景图(2200x3278)中的坐标（基于新版海报模板精确测量）
 const REGIONS = {
-  // 照片框（灰色区域）
+  // 照片框（灰色区域）x=459-1815, y=860-1560
   photoBox: {
-    x: 464,
-    y: 848,
-    w: 1352,
-    h: 808,
+    x: 459,
+    y: 860,
+    w: 1356,
+    h: 700,
   },
-  // INFORMATION 信息栏
+  // INFORMATION 信息栏 x=200-1600, y=1720-1840
   infoBox: {
-    x: 570,
-    y: 1718,
-    w: 1312,
-    h: 172,
+    x: 200,
+    y: 1720,
+    w: 1400,
+    h: 120,
   },
-  // 问题1答案框（最酷的事）
+  // 问题1答案框（右侧暗色框）x=1200-1930, y=2200-2450
   q1Box: {
-    x: 1206,
-    y: 2062,
-    w: 822,
-    h: 138,
+    x: 1200,
+    y: 2200,
+    w: 730,
+    h: 250,
   },
-  // 问题2答案框（报名原因）
+  // 问题2答案框（右侧暗色框）x=1200-1930, y=2500-2700
   q2Box: {
-    x: 1206,
-    y: 2322,
-    w: 822,
-    h: 138,
+    x: 1200,
+    y: 2500,
+    w: 730,
+    h: 200,
   },
-  // 问题3答案框（收获）
+  // 问题3答案框（右侧暗色框）x=1200-1930, y=2750-3000
   q3Box: {
-    x: 1206,
-    y: 2577,
-    w: 822,
-    h: 138,
+    x: 1200,
+    y: 2750,
+    w: 730,
+    h: 250,
   },
 };
 
@@ -170,19 +170,20 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
     answerBoxes.forEach(({ box, text }) => {
       if (!text) return;
       ctx.save();
-      let fontSize = Math.round(17 * s);
+      let fontSize = Math.round(42 * s);
       ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
       ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
+      ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      // Auto-shrink
+      // Auto-shrink if text too wide
       let textWidth = ctx.measureText(text).width;
-      const maxWidth = box.w * s * 0.88;
+      const paddingX = 20 * s;
+      const maxWidth = box.w * s - paddingX * 2;
       if (textWidth > maxWidth) {
         fontSize = Math.floor(fontSize * (maxWidth / textWidth));
         ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
       }
-      ctx.fillText(text, (box.x + box.w / 2) * s, (box.y + box.h / 2) * s);
+      ctx.fillText(text, (box.x) * s + paddingX, (box.y + box.h / 2 + 60) * s);
       ctx.restore();
     });
   }, [data, displayScale]);
@@ -419,18 +420,19 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
             answerBoxes.forEach(({ box, text }) => {
               if (!text) return;
               ctx.save();
-              let fontSize = Math.round(17 * s);
+              let fontSize = Math.round(42 * s);
               ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
               ctx.fillStyle = "#ffffff";
-              ctx.textAlign = "center";
+              ctx.textAlign = "left";
               ctx.textBaseline = "middle";
-              const textWidth = ctx.measureText(text).width;
-              const maxWidth = box.w * s * 0.88;
+              let textWidth = ctx.measureText(text).width;
+              const paddingX = 20 * s;
+              const maxWidth = box.w * s - paddingX * 2;
               if (textWidth > maxWidth) {
                 fontSize = Math.floor(fontSize * (maxWidth / textWidth));
                 ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
               }
-              ctx.fillText(text, (box.x + box.w / 2) * s, (box.y + box.h / 2) * s);
+              ctx.fillText(text, (box.x) * s + paddingX, (box.y + box.h / 2 + 60) * s);
               ctx.restore();
             });
             resolve(offscreen.toDataURL("image/png"));
