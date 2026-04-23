@@ -191,7 +191,6 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
   useEffect(() => {
     if (bgLoadedRef.current) return;
     const img = new Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => {
       bgImageRef.current = img;
       bgLoadedRef.current = true;
@@ -440,7 +439,6 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
             render();
           } else {
             const bgImg = new Image();
-            bgImg.crossOrigin = "anonymous";
             bgImg.onload = () => {
               bgImageRef.current = bgImg;
               bgLoadedRef.current = true;
