@@ -1,44 +1,45 @@
 import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from "react";
 
-// 新背景图尺寸: 2200 x 3278
+// 新背景图尺寸: 2200 x 3120
 const PREVIEW_W = 2200;
-const PREVIEW_H = 3278;
-// 各区域在背景图(2200x3278)中的坐标（基于新版海报模板精确测量）
+const PREVIEW_H = 3120;
+
+// 各区域在背景图(2200x3120)中的坐标（基于新版海报模板精确测量）
 const REGIONS = {
-  // 照片框（灰色区域）x=459-1815, y=860-1560
+  // 照片框（白色/灰色区域，完全覆盖）x=530-1760, y=1000-1720
   photoBox: {
-    x: 459,
-    y: 860,
-    w: 1356,
-    h: 700,
+    x: 530,
+    y: 1000,
+    w: 1230,
+    h: 720,
   },
-  // INFORMATION 信息栏 x=700-1800, y=1720-1880（暗色内容区域，INFORMATION标签右侧）
-  infoBox: {
+  // 名字框（"探索者"右侧黄色横条）x=700-1250, y=820-865
+  nameBox: {
     x: 700,
-    y: 1720,
-    w: 1080,
-    h: 160,
+    y: 820,
+    w: 550,
+    h: 45,
   },
-  // 问题1答案框（右侧暗色框）x=1200-1930, y=2200-2450
+  // 问题1答案框（右侧暗色框）x=1200-1960, y=2050-2270
   q1Box: {
     x: 1200,
-    y: 2200,
-    w: 730,
-    h: 250,
+    y: 2050,
+    w: 760,
+    h: 220,
   },
-  // 问题2答案框（右侧暗色框）x=1200-1930, y=2500-2700
+  // 问题2答案框（右侧暗色框）x=1200-1960, y=2330-2510
   q2Box: {
     x: 1200,
-    y: 2500,
-    w: 730,
-    h: 200,
+    y: 2330,
+    w: 760,
+    h: 180,
   },
-  // 问题3答案框（右侧暗色框）x=1200-1930, y=2750-3000
+  // 问题3答案框（右侧暗色框）x=1200-1960, y=2590-2770
   q3Box: {
     x: 1200,
-    y: 2750,
-    w: 730,
-    h: 250,
+    y: 2590,
+    w: 760,
+    h: 180,
   },
 };
 
@@ -65,6 +66,42 @@ interface Props {
 }
 
 const BG_URL = "/poster_bg.png";
+
+// 自动换行文字绘制函数（返回实际行数）
+function drawWrappedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  boxH: number
+): void {
+  if (!text) return;
+  const chars = text.split("");
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const char of chars) {
+    const testLine = currentLine + char;
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && currentLine.length > 0) {
+      lines.push(currentLine);
+      currentLine = char;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+
+  // 垂直居中：计算总高度后从中间开始
+  const totalH = lines.length * lineHeight;
+  const startY = y + (boxH - totalH) / 2 + lineHeight / 2;
+
+  lines.forEach((line, i) => {
+    ctx.fillText(line, x, startY + i * lineHeight);
+  });
+}
 
 const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas(
   { data, onChange, width = 440 },
@@ -100,7 +137,7 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    // 2. Draw photo in photo box
+    // 2. Draw photo in photo box (fully cover the white/gray area)
     const pb = REGIONS.photoBox;
     if (photoImageRef.current && data.photoUrl) {
       const photo = photoImageRef.current;
@@ -112,6 +149,7 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
       const photoRatio = photo.naturalWidth / photo.naturalHeight;
       const boxRatio = boxW / boxH;
       let baseW: number, baseH: number;
+      // Always cover: use the larger dimension to fill
       if (photoRatio > boxRatio) {
         baseH = boxH;
         baseW = baseH * photoRatio;
@@ -134,39 +172,27 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
       ctx.restore();
     }
 
-    // 3. Draw INFORMATION text
-    const ib = REGIONS.infoBox;
-    if (data.name || data.hometown) {
+    // 3. Draw name in nameBox (探索者右侧黄色框)
+    const nb = REGIONS.nameBox;
+    if (data.name) {
       ctx.save();
-      let fontSize = Math.round(36 * s);
+      let fontSize = Math.round(28 * s);
       ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
       ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "left";
       ctx.textBaseline = "middle";
-      const centerY = (ib.y + ib.h / 2) * s;
-      const paddingX = 200 * s;
-      // Auto-shrink: check combined width
-      const nameText = data.name ? `@${data.name}` : "";
-      const hometownText = data.hometown ? `#${data.hometown}` : "";
-      const combinedWidth = ctx.measureText(nameText).width + ctx.measureText(hometownText).width + paddingX * 2;
-      const maxWidth = ib.w * s - paddingX * 2;
-      if (combinedWidth > maxWidth) {
-        fontSize = Math.floor(fontSize * (maxWidth / combinedWidth));
+      // Auto-shrink if too wide
+      const maxW = nb.w * s - 10 * s;
+      let tw = ctx.measureText(data.name).width;
+      if (tw > maxW) {
+        fontSize = Math.floor(fontSize * maxW / tw);
         ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
       }
-      // Name: left-aligned
-      if (nameText) {
-        ctx.textAlign = "left";
-        ctx.fillText(nameText, ib.x * s + paddingX, centerY);
-      }
-      // Hometown: right-aligned
-      if (hometownText) {
-        ctx.textAlign = "right";
-        ctx.fillText(hometownText, (ib.x + ib.w) * s - paddingX, centerY);
-      }
+      ctx.fillText(data.name, nb.x * s + 8 * s, (nb.y + nb.h / 2) * s);
       ctx.restore();
     }
 
-    // 4. Draw answer texts
+    // 4. Draw answer texts with word wrap
     const answerBoxes = [
       { box: REGIONS.q1Box, text: data.coolest },
       { box: REGIONS.q2Box, text: data.reason },
@@ -176,20 +202,24 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
     answerBoxes.forEach(({ box, text }) => {
       if (!text) return;
       ctx.save();
-      let fontSize = Math.round(42 * s);
+      const fontSize = Math.round(36 * s);
       ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
       ctx.fillStyle = "#ffffff";
       ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      // Auto-shrink if text too wide
-      let textWidth = ctx.measureText(text).width;
+      ctx.textBaseline = "top";
       const paddingX = 20 * s;
+      const paddingY = 10 * s;
       const maxWidth = box.w * s - paddingX * 2;
-      if (textWidth > maxWidth) {
-        fontSize = Math.floor(fontSize * (maxWidth / textWidth));
-        ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
-      }
-      ctx.fillText(text, (box.x) * s + paddingX, (box.y + box.h / 2) * s);
+      const lineHeight = fontSize * 1.4;
+      drawWrappedText(
+        ctx,
+        text,
+        box.x * s + paddingX,
+        box.y * s + paddingY,
+        maxWidth,
+        lineHeight,
+        box.h * s - paddingY * 2
+      );
       ctx.restore();
     });
   }, [data, displayScale]);
@@ -336,11 +366,12 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
   }, []);
 
   const cursorStyle =
-    data.photoUrl && onChange
-      ? isDragging
-        ? "grabbing"
-        : "grab"
-      : "default";
+    data.photoUrl &&
+    (isDragging
+      ? "grabbing"
+      : "grab")
+    ? "default"
+    : "default";
 
   // Expose exportImage: renders at full resolution and returns PNG data URL
   useImperativeHandle(
@@ -366,7 +397,7 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
               ctx.fillStyle = "#1a1a2e";
               ctx.fillRect(0, 0, PREVIEW_W, PREVIEW_H);
             }
-            // 2. Photo
+            // 2. Photo (fully cover white area)
             const pb = REGIONS.photoBox;
             if (photoImageRef.current && data.photoUrl) {
               const photo = photoImageRef.current;
@@ -395,35 +426,25 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
               ctx.drawImage(photo, drawX, drawY, scaledW, scaledH);
               ctx.restore();
             }
-            // 3. INFORMATION text
-            const ib = REGIONS.infoBox;
-            if (data.name || data.hometown) {
+            // 3. Name in nameBox
+            const nb = REGIONS.nameBox;
+            if (data.name) {
               ctx.save();
-              let fontSize = Math.round(36 * s);
+              let fontSize = Math.round(28 * s);
               ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
               ctx.fillStyle = "#ffffff";
+              ctx.textAlign = "left";
               ctx.textBaseline = "middle";
-              const centerY = (ib.y + ib.h / 2) * s;
-              const paddingX = 200 * s;
-              const nameText = data.name ? `@${data.name}` : "";
-              const hometownText = data.hometown ? `#${data.hometown}` : "";
-              const combinedWidth = ctx.measureText(nameText).width + ctx.measureText(hometownText).width + paddingX * 2;
-              const maxWidth = ib.w * s - paddingX * 2;
-              if (combinedWidth > maxWidth) {
-                fontSize = Math.floor(fontSize * (maxWidth / combinedWidth));
+              const maxW = nb.w * s - 10 * s;
+              const tw = ctx.measureText(data.name).width;
+              if (tw > maxW) {
+                fontSize = Math.floor(fontSize * maxW / tw);
                 ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
               }
-              if (nameText) {
-                ctx.textAlign = "left";
-                ctx.fillText(nameText, ib.x * s + paddingX, centerY);
-              }
-              if (hometownText) {
-                ctx.textAlign = "right";
-                ctx.fillText(hometownText, (ib.x + ib.w) * s - paddingX, centerY);
-              }
+              ctx.fillText(data.name, nb.x * s + 8 * s, (nb.y + nb.h / 2) * s);
               ctx.restore();
             }
-            // 4. Answer texts
+            // 4. Answer texts with word wrap
             const answerBoxes = [
               { box: REGIONS.q1Box, text: data.coolest },
               { box: REGIONS.q2Box, text: data.reason },
@@ -432,19 +453,24 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
             answerBoxes.forEach(({ box, text }) => {
               if (!text) return;
               ctx.save();
-              let fontSize = Math.round(42 * s);
+              const fontSize = Math.round(36 * s);
               ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
               ctx.fillStyle = "#ffffff";
               ctx.textAlign = "left";
-              ctx.textBaseline = "middle";
-              let textWidth = ctx.measureText(text).width;
+              ctx.textBaseline = "top";
               const paddingX = 20 * s;
+              const paddingY = 10 * s;
               const maxWidth = box.w * s - paddingX * 2;
-              if (textWidth > maxWidth) {
-                fontSize = Math.floor(fontSize * (maxWidth / textWidth));
-                ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
-              }
-              ctx.fillText(text, (box.x) * s + paddingX, (box.y + box.h / 2) * s);
+              const lineHeight = fontSize * 1.4;
+              drawWrappedText(
+                ctx,
+                text,
+                box.x * s + paddingX,
+                box.y * s + paddingY,
+                maxWidth,
+                lineHeight,
+                box.h * s - paddingY * 2
+              );
               ctx.restore();
             });
             resolve(offscreen.toDataURL("image/png"));
