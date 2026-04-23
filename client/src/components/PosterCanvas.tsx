@@ -143,7 +143,7 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
       ctx.fillStyle = "#ffffff";
       ctx.textBaseline = "middle";
       const centerY = (ib.y + ib.h / 2) * s;
-      const paddingX = 30 * s;
+      const paddingX = 200 * s;
       // Auto-shrink: check combined width
       const nameText = data.name ? `@${data.name}` : "";
       const hometownText = data.hometown ? `#${data.hometown}` : "";
@@ -404,7 +404,7 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
               ctx.fillStyle = "#ffffff";
               ctx.textBaseline = "middle";
               const centerY = (ib.y + ib.h / 2) * s;
-              const paddingX = 30 * s;
+              const paddingX = 200 * s;
               const nameText = data.name ? `@${data.name}` : "";
               const hometownText = data.hometown ? `#${data.hometown}` : "";
               const combinedWidth = ctx.measureText(nameText).width + ctx.measureText(hometownText).width + paddingX * 2;
