@@ -12,12 +12,12 @@ const REGIONS = {
     w: 1356,
     h: 700,
   },
-  // INFORMATION 信息栏 x=200-1600, y=1720-1840
+  // INFORMATION 信息栏 x=310-1800, y=1720-1880（内容暗色区域）
   infoBox: {
-    x: 200,
+    x: 310,
     y: 1720,
-    w: 1400,
-    h: 120,
+    w: 1490,
+    h: 160,
   },
   // 问题1答案框（右侧暗色框）x=1200-1930, y=2200-2450
   q1Box: {
@@ -137,26 +137,32 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
     // 3. Draw INFORMATION text
     const ib = REGIONS.infoBox;
     if (data.name || data.hometown) {
-      const parts: string[] = [];
-      if (data.name) parts.push(`@${data.name}`);
-      if (data.hometown) parts.push(`#${data.hometown}`);
-      const infoText = parts.join("     ");
-
       ctx.save();
-      const fontSize = Math.round(20 * s);
+      let fontSize = Math.round(36 * s);
       ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
       ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      // Measure and auto-shrink if too wide
-      let actualFontSize = fontSize;
-      let textWidth = ctx.measureText(infoText).width;
-      const maxWidth = ib.w * s * 0.9;
-      if (textWidth > maxWidth) {
-        actualFontSize = Math.floor(fontSize * (maxWidth / textWidth));
-        ctx.font = `700 ${actualFontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+      const centerY = (ib.y + ib.h / 2) * s;
+      const paddingX = 30 * s;
+      // Auto-shrink: check combined width
+      const nameText = data.name ? `@${data.name}` : "";
+      const hometownText = data.hometown ? `#${data.hometown}` : "";
+      const combinedWidth = ctx.measureText(nameText).width + ctx.measureText(hometownText).width + paddingX * 2;
+      const maxWidth = ib.w * s - paddingX * 2;
+      if (combinedWidth > maxWidth) {
+        fontSize = Math.floor(fontSize * (maxWidth / combinedWidth));
+        ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
       }
-      ctx.fillText(infoText, (ib.x + ib.w / 2) * s, (ib.y + ib.h / 2) * s);
+      // Name: left-aligned
+      if (nameText) {
+        ctx.textAlign = "left";
+        ctx.fillText(nameText, ib.x * s + paddingX, centerY);
+      }
+      // Hometown: right-aligned
+      if (hometownText) {
+        ctx.textAlign = "right";
+        ctx.fillText(hometownText, (ib.x + ib.w) * s - paddingX, centerY);
+      }
       ctx.restore();
     }
 
@@ -183,7 +189,7 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
         fontSize = Math.floor(fontSize * (maxWidth / textWidth));
         ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
       }
-      ctx.fillText(text, (box.x) * s + paddingX, (box.y + box.h / 2 + 60) * s);
+      ctx.fillText(text, (box.x) * s + paddingX, (box.y + box.h / 2) * s);
       ctx.restore();
     });
   }, [data, displayScale]);
@@ -392,23 +398,29 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
             // 3. INFORMATION text
             const ib = REGIONS.infoBox;
             if (data.name || data.hometown) {
-              const parts: string[] = [];
-              if (data.name) parts.push(`@${data.name}`);
-              if (data.hometown) parts.push(`#${data.hometown}`);
-              const infoText = parts.join("     ");
               ctx.save();
-              let fontSize = Math.round(20 * s);
+              let fontSize = Math.round(36 * s);
               ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
               ctx.fillStyle = "#ffffff";
-              ctx.textAlign = "center";
               ctx.textBaseline = "middle";
-              const textWidth = ctx.measureText(infoText).width;
-              const maxWidth = ib.w * s * 0.9;
-              if (textWidth > maxWidth) {
-                fontSize = Math.floor(fontSize * (maxWidth / textWidth));
+              const centerY = (ib.y + ib.h / 2) * s;
+              const paddingX = 30 * s;
+              const nameText = data.name ? `@${data.name}` : "";
+              const hometownText = data.hometown ? `#${data.hometown}` : "";
+              const combinedWidth = ctx.measureText(nameText).width + ctx.measureText(hometownText).width + paddingX * 2;
+              const maxWidth = ib.w * s - paddingX * 2;
+              if (combinedWidth > maxWidth) {
+                fontSize = Math.floor(fontSize * (maxWidth / combinedWidth));
                 ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
               }
-              ctx.fillText(infoText, (ib.x + ib.w / 2) * s, (ib.y + ib.h / 2) * s);
+              if (nameText) {
+                ctx.textAlign = "left";
+                ctx.fillText(nameText, ib.x * s + paddingX, centerY);
+              }
+              if (hometownText) {
+                ctx.textAlign = "right";
+                ctx.fillText(hometownText, (ib.x + ib.w) * s - paddingX, centerY);
+              }
               ctx.restore();
             }
             // 4. Answer texts
@@ -432,7 +444,7 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
                 fontSize = Math.floor(fontSize * (maxWidth / textWidth));
                 ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
               }
-              ctx.fillText(text, (box.x) * s + paddingX, (box.y + box.h / 2 + 60) * s);
+              ctx.fillText(text, (box.x) * s + paddingX, (box.y + box.h / 2) * s);
               ctx.restore();
             });
             resolve(offscreen.toDataURL("image/png"));
