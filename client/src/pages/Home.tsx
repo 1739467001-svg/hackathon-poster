@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { Download, Monitor, Loader2 } from "lucide-react";
-import PosterCanvas, { type PosterData } from "@/components/PosterCanvas";
+import PosterCanvas, { type PosterData, type PosterCanvasHandle } from "@/components/PosterCanvas";
 import ControlPanel from "@/components/ControlPanel";
 import { toast } from "sonner";
 
@@ -20,58 +20,34 @@ export default function Home() {
   const [data, setData] = useState<PosterData>(DEFAULT_DATA);
   const [downloading, setDownloading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const posterRef = useRef<PosterCanvasHandle>(null);
 
   const handleChange = useCallback((patch: Partial<PosterData>) => {
     setData((prev) => ({ ...prev, ...patch }));
   }, []);
 
   const handleDownload = useCallback(async () => {
+    if (!posterRef.current) {
+      toast.error("海报组件未就绪，请稍后重试");
+      return;
+    }
     setDownloading(true);
     try {
-      // Convert photoUrl (data URL) to base64 string
-      let image_b64 = "";
-      if (data.photoUrl && data.photoUrl.startsWith("data:")) {
-        image_b64 = data.photoUrl.split(",")[1] || "";
-      }
-
-      const payload = {
-        name: data.name,
-        hometown: data.hometown,
-        coolest: data.coolest,
-        reason: data.reason,
-        harvest: data.harvest,
-        image_b64,
-        img_scale: data.imgScale,
-        img_offset_x: data.imgOffsetX * (2748 / 1100), // scale to PDF coords
-        img_offset_y: data.imgOffsetY * (2748 / 1100),
-      };
-
-      const resp = await fetch("/api/generate-poster", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(err.error || `HTTP ${resp.status}`);
-      }
-
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
+      const dataUrl = await posterRef.current.exportImage();
       const a = document.createElement("a");
-      a.href = url;
-      a.download = "黑客松海报.pdf";
+      a.href = dataUrl;
+      a.download = "黑客松海报.png";
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
-      toast.success("海报下载成功！");
+      document.body.removeChild(a);
+      toast.success("海报图片下载成功！");
     } catch (err: any) {
       console.error(err);
       toast.error(`下载失败：${err.message}`);
     } finally {
       setDownloading(false);
     }
-  }, [data]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -110,7 +86,7 @@ export default function Home() {
                 {/* Glow effect */}
                 <div className="absolute inset-0 rounded-xl bg-primary/10 blur-xl -z-10 scale-95" />
                 <div className="border border-border/50 rounded-xl overflow-hidden shadow-2xl">
-                  <PosterCanvas data={data} onChange={handleChange} width={420} />
+                  <PosterCanvas ref={posterRef} data={data} onChange={handleChange} width={420} />
                 </div>
               </div>
               {/* Poster dimensions hint */}
@@ -142,17 +118,17 @@ export default function Home() {
                 {downloading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    正在生成 PDF...
+                    正在生成图片...
                   </>
                 ) : (
                   <>
                     <Download size={18} />
-                    下载 PDF 海报
+                    下载海报图片
                   </>
                 )}
               </button>
               <p className="text-xs text-muted-foreground text-center mt-2">
-                点击后将生成完整填写的 PDF 文件
+                点击后将生成 PNG 图片（1100 × 1648 px）
               </p>
             </div>
           </div>

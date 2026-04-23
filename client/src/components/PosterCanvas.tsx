@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from "react";
 
 // PDF原始尺寸: 2748 x 4119
 // 预览底图尺寸: 1100 x 1648 (0.4x缩放)
@@ -48,6 +48,10 @@ const REGIONS = {
   },
 };
 
+export interface PosterCanvasHandle {
+  exportImage: () => Promise<string>;
+}
+
 export interface PosterData {
   name: string;
   hometown: string;
@@ -68,7 +72,10 @@ interface Props {
 
 const BG_URL = "/manus-storage/poster_bg_1841a9bb.png";
 
-export default function PosterCanvas({ data, onChange, width = 440 }: Props) {
+const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas(
+  { data, onChange, width = 440 },
+  ref
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const bgImageRef = useRef<HTMLImageElement | null>(null);
   const photoImageRef = useRef<HTMLImageElement | null>(null);
@@ -335,6 +342,124 @@ export default function PosterCanvas({ data, onChange, width = 440 }: Props) {
         : "grab"
       : "default";
 
+  // Expose exportImage: renders at full resolution and returns PNG data URL
+  useImperativeHandle(
+    ref,
+    () => ({
+      exportImage: () =>
+        new Promise<string>((resolve, reject) => {
+          const offscreen = document.createElement("canvas");
+          offscreen.width = PREVIEW_W;
+          offscreen.height = PREVIEW_H;
+          const ctx = offscreen.getContext("2d");
+          if (!ctx) {
+            reject(new Error("Canvas not available"));
+            return;
+          }
+          const s = 1;
+          const render = () => {
+            ctx.clearRect(0, 0, PREVIEW_W, PREVIEW_H);
+            // 1. Background
+            if (bgImageRef.current && bgLoadedRef.current) {
+              ctx.drawImage(bgImageRef.current, 0, 0, PREVIEW_W, PREVIEW_H);
+            } else {
+              ctx.fillStyle = "#1a1a2e";
+              ctx.fillRect(0, 0, PREVIEW_W, PREVIEW_H);
+            }
+            // 2. Photo
+            const pb = REGIONS.photoBox;
+            if (photoImageRef.current && data.photoUrl) {
+              const photo = photoImageRef.current;
+              const boxW = pb.w * s;
+              const boxH = pb.h * s;
+              const boxX = pb.x * s;
+              const boxY = pb.y * s;
+              const photoRatio = photo.naturalWidth / photo.naturalHeight;
+              const boxRatio = boxW / boxH;
+              let baseW: number, baseH: number;
+              if (photoRatio > boxRatio) {
+                baseH = boxH;
+                baseW = baseH * photoRatio;
+              } else {
+                baseW = boxW;
+                baseH = baseW / photoRatio;
+              }
+              const scaledW = baseW * data.imgScale;
+              const scaledH = baseH * data.imgScale;
+              const drawX = boxX + (boxW - scaledW) / 2 + data.imgOffsetX * s;
+              const drawY = boxY + (boxH - scaledH) / 2 + data.imgOffsetY * s;
+              ctx.save();
+              ctx.beginPath();
+              ctx.rect(boxX, boxY, boxW, boxH);
+              ctx.clip();
+              ctx.drawImage(photo, drawX, drawY, scaledW, scaledH);
+              ctx.restore();
+            }
+            // 3. INFORMATION text
+            const ib = REGIONS.infoBox;
+            if (data.name || data.hometown) {
+              const parts: string[] = [];
+              if (data.name) parts.push(`@${data.name}`);
+              if (data.hometown) parts.push(`#${data.hometown}`);
+              const infoText = parts.join("     ");
+              ctx.save();
+              let fontSize = Math.round(20 * s);
+              ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+              ctx.fillStyle = "#ffffff";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              const textWidth = ctx.measureText(infoText).width;
+              const maxWidth = ib.w * s * 0.9;
+              if (textWidth > maxWidth) {
+                fontSize = Math.floor(fontSize * (maxWidth / textWidth));
+                ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+              }
+              ctx.fillText(infoText, (ib.x + ib.w / 2) * s, (ib.y + ib.h / 2) * s);
+              ctx.restore();
+            }
+            // 4. Answer texts
+            const answerBoxes = [
+              { box: REGIONS.q1Box, text: data.coolest },
+              { box: REGIONS.q2Box, text: data.reason },
+              { box: REGIONS.q3Box, text: data.harvest },
+            ];
+            answerBoxes.forEach(({ box, text }) => {
+              if (!text) return;
+              ctx.save();
+              let fontSize = Math.round(17 * s);
+              ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+              ctx.fillStyle = "#ffffff";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              const textWidth = ctx.measureText(text).width;
+              const maxWidth = box.w * s * 0.88;
+              if (textWidth > maxWidth) {
+                fontSize = Math.floor(fontSize * (maxWidth / textWidth));
+                ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+              }
+              ctx.fillText(text, (box.x + box.w / 2) * s, (box.y + box.h / 2) * s);
+              ctx.restore();
+            });
+            resolve(offscreen.toDataURL("image/png"));
+          };
+          if (bgLoadedRef.current) {
+            render();
+          } else {
+            const bgImg = new Image();
+            bgImg.crossOrigin = "anonymous";
+            bgImg.onload = () => {
+              bgImageRef.current = bgImg;
+              bgLoadedRef.current = true;
+              render();
+            };
+            bgImg.onerror = () => render();
+            bgImg.src = BG_URL;
+          }
+        }),
+    }),
+    [data] // eslint-disable-line
+  );
+
   return (
     <div className="relative">
       <canvas
@@ -358,4 +483,6 @@ export default function PosterCanvas({ data, onChange, width = 440 }: Props) {
       )}
     </div>
   );
-}
+});
+
+export default PosterCanvas;
