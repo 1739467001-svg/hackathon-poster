@@ -69,7 +69,7 @@ interface Props {
   width?: number;
 }
 
-const BG_URL = "/manus-storage/poster_bg_latest_baf0124a.png";
+const BG_URL = "/manus-storage/poster_bg_latest_d67ef19f.png";
 
 const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas(
   { data, onChange, width = 440 },
