@@ -1,49 +1,44 @@
 import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from "react";
 
-// PDF原始尺寸: 2748 x 4096
-// 预览底图尺寸: 1100 x 1640 (0.4003x缩放)
-const PDF_W = 2748;
-const PDF_H = 4096;
-const PREVIEW_W = 1100;
-const PREVIEW_H = 1640;
-const PDF_TO_PREVIEW = PREVIEW_W / PDF_W; // 0.400291
-
-// 各区域在预览图(1100x1640)中的坐标（像素级精确测量 v2）
+// 新背景图尺寸: 2200 x 3279
+const PREVIEW_W = 2200;
+const PREVIEW_H = 3279;
+// 各区域在背景图(2200x3279)中的坐标（基于新海报模板精确测量）
 const REGIONS = {
-  // 图二灰色框（精确测量）: 预览坐标 x=237, y=483, w=663, h=296
+  // 照片框（灰色区域）
   photoBox: {
-    x: 237,
-    y: 483,
-    w: 663,
-    h: 296,
+    x: 464,
+    y: 848,
+    w: 1352,
+    h: 808,
   },
-  // INFORMATION黑色填写框: 预览坐标 x=253, y=845, w=726, h=109
+  // INFORMATION 信息栏
   infoBox: {
-    x: 253,
-    y: 845,
-    w: 726,
-    h: 109,
+    x: 570,
+    y: 1718,
+    w: 1312,
+    h: 172,
   },
-  // 问题1答案框（最酷的事）: 预览坐标 x=478, y=1117, w=618, h=95
+  // 问题1答案框（最酷的事）
   q1Box: {
-    x: 478,
-    y: 1117,
-    w: 618,
-    h: 95,
+    x: 1206,
+    y: 2062,
+    w: 822,
+    h: 138,
   },
-  // 问题2答案框（报名原因）: 预览坐标 x=451, y=1257, w=648, h=94
+  // 问题2答案框（报名原因）
   q2Box: {
-    x: 451,
-    y: 1257,
-    w: 648,
-    h: 94,
+    x: 1206,
+    y: 2322,
+    w: 822,
+    h: 138,
   },
-  // 问题3答案框（收获）: 预览坐标 x=451, y=1396, w=648, h=94
+  // 问题3答案框（收获）
   q3Box: {
-    x: 451,
-    y: 1396,
-    w: 648,
-    h: 94,
+    x: 1206,
+    y: 2577,
+    w: 822,
+    h: 138,
   },
 };
 
@@ -69,7 +64,7 @@ interface Props {
   width?: number;
 }
 
-const BG_URL = "/manus-storage/poster_bg_latest_d67ef19f.png";
+const BG_URL = "/poster_bg.png";
 
 const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas(
   { data, onChange, width = 440 },
