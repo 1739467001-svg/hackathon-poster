@@ -8,43 +8,42 @@ const PREVIEW_W = 1100;
 const PREVIEW_H = 1639;
 const PDF_TO_PREVIEW = PREVIEW_W / PDF_W; // 0.4003
 
-// 各区域在预览图(1100x1639)中的坐标
-// PDF坐标 * PDF_TO_PREVIEW = 预览坐标
+// 各区域坐标（像素级测量，直接使用预览图坐标）
 const REGIONS = {
-  // 图一白色框: PDF(462,886)~(2598,1636)
+  // 图一白色框: 预览图(174,310)~(999,619)
   photoBox: {
-    x: Math.round(462 * PDF_TO_PREVIEW),   // 185
-    y: Math.round(886 * PDF_TO_PREVIEW),   // 355
-    w: Math.round((2598 - 462) * PDF_TO_PREVIEW),  // 855
-    h: Math.round((1636 - 886) * PDF_TO_PREVIEW),  // 300
+    x: 174,
+    y: 310,
+    w: 999 - 174,  // 825
+    h: 619 - 310,  // 309
   },
-  // INFORMATION框: PDF(499,2123)~(2023,2323)
+  // INFORMATION框: 预览图(130,820)~(999,939)
   infoBox: {
-    x: Math.round(499 * PDF_TO_PREVIEW),   // 200
-    y: Math.round(2123 * PDF_TO_PREVIEW),  // 850
-    w: Math.round((2023 - 499) * PDF_TO_PREVIEW),  // 610
-    h: Math.round((2323 - 2123) * PDF_TO_PREVIEW), // 80
+    x: 130,
+    y: 820,
+    w: 999 - 130,  // 869
+    h: 939 - 820,  // 119
   },
-  // 问题1答案框: PDF(1411,2710)~(2048,2935)
+  // 问题1答案框: 预览图(540,1060)~(1009,1199)
   q1Box: {
-    x: Math.round(1411 * PDF_TO_PREVIEW),  // 565
-    y: Math.round(2710 * PDF_TO_PREVIEW),  // 1085
-    w: Math.round((2048 - 1411) * PDF_TO_PREVIEW), // 255
-    h: Math.round((2935 - 2710) * PDF_TO_PREVIEW), // 90
+    x: 540,
+    y: 1060,
+    w: 1009 - 540,  // 469
+    h: 1199 - 1060, // 139
   },
-  // 问题2答案框: PDF(1411,3035)~(2048,3260)
+  // 问题2答案框: 预览图(540,1210)~(1009,1349)
   q2Box: {
-    x: Math.round(1411 * PDF_TO_PREVIEW),  // 565
-    y: Math.round(3035 * PDF_TO_PREVIEW),  // 1215
-    w: Math.round((2048 - 1411) * PDF_TO_PREVIEW), // 255
-    h: Math.round((3260 - 3035) * PDF_TO_PREVIEW), // 90
+    x: 540,
+    y: 1210,
+    w: 1009 - 540,  // 469
+    h: 1349 - 1210, // 139
   },
-  // 问题3答案框: PDF(1411,3360)~(2048,3584)
+  // 问题3答案框: 预览图(540,1360)~(1009,1499)
   q3Box: {
-    x: Math.round(1411 * PDF_TO_PREVIEW),  // 565
-    y: Math.round(3360 * PDF_TO_PREVIEW),  // 1345
-    w: Math.round((2048 - 1411) * PDF_TO_PREVIEW), // 255
-    h: Math.round((3584 - 3360) * PDF_TO_PREVIEW), // 90
+    x: 540,
+    y: 1360,
+    w: 1009 - 540,  // 469
+    h: 1499 - 1360, // 139
   },
 };
 

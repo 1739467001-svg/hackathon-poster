@@ -13,11 +13,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 # 新海报PDF尺寸: 2748 x 4096
 # 各区域坐标（PDF坐标系，原点在左上角）：
-# 图一白色框:       (462, 886)  to (2598, 1636)
-# INFORMATION黑框:  (499, 2123) to (2023, 2323)
-# 问题1答案框:      (1411, 2710) to (2048, 2935)
-# 问题2答案框:      (1411, 3035) to (2048, 3260)
-# 问题3答案框:      (1411, 3360) to (2048, 3584)
+# 图一白色框:       (434, 774)  to (2495, 1546)  [像素级测量]
+# INFORMATION黑框:  (324, 2049) to (2495, 2346)  [像素级测量]
+# 问题1答案框:      (1349, 2649) to (2520, 2996)  [像素级测量]
+# 问题2答案框:      (1349, 3023) to (2520, 3371)  [像素级测量]
+# 问题3答案框:      (1349, 3398) to (2520, 3746)  [像素级测量]
 
 FONT_BOLD = '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc'
 FONT_REGULAR = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc'
@@ -121,8 +121,8 @@ def generate_poster(params):
             if img.mode != 'RGB':
                 img = img.convert('RGB')
 
-            # 图一白色框区域 (新海报)
-            img_rect = fitz.Rect(462, 886, 2598, 1636)
+            # 图一白色框区域 (新海报, 像素级测量)
+            img_rect = fitz.Rect(434, 774, 2495, 1546)
             box_w = img_rect.width   # 2136
             box_h = img_rect.height  # 750
 
@@ -170,7 +170,7 @@ def generate_poster(params):
 
     # ===== 2. 填入称呼和家乡 =====
     if name or hometown:
-        info_rect = fitz.Rect(499, 2123, 2023, 2323)
+        info_rect = fitz.Rect(324, 2049, 2495, 2346)
         parts = []
         if name:
             parts.append(f"@{name}")
@@ -182,9 +182,9 @@ def generate_poster(params):
 
     # ===== 3. 填入三个问题回答 =====
     answers = [
-        (coolest, fitz.Rect(1411, 2710, 2048, 2935)),
-        (reason,  fitz.Rect(1411, 3035, 2048, 3260)),
-        (harvest, fitz.Rect(1411, 3360, 2048, 3584)),
+        (coolest, fitz.Rect(1349, 2649, 2520, 2996)),
+        (reason,  fitz.Rect(1349, 3023, 2520, 3371)),
+        (harvest, fitz.Rect(1349, 3398, 2520, 3746)),
     ]
     for answer, rect in answers:
         if answer:
