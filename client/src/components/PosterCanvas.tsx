@@ -1,13 +1,16 @@
 import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHandle } from "react";
 
-// 新背景图尺寸: 2200 x 3120
+// 背景图原始尺寸: 2200 x 3120
 const PREVIEW_W = 2200;
 const PREVIEW_H = 3120;
+
+// A4 导出尺寸 (300dpi): 2480 x 3508
+const A4_W = 2480;
+const A4_H = 3508;
 
 // 各区域在背景图(2200x3120)中的坐标（基于新版海报模板精确测量）
 const REGIONS = {
   // 照片框（白色/灰色区域，完全覆盖）精确测量: x=693-1646, y=1009-1800
-  // 略微向外扩展8px确保无灰色露出
   photoBox: {
     x: 685,
     y: 1001,
@@ -16,33 +19,33 @@ const REGIONS = {
   },
   // 名字框（"探索者"右侧横条）
   // 探索者文字右边界约 x=870，横条范围 y=780-920（高140px）
-  // 名字在 x=880-1800 范围内居中显示，y=780，h=140
+  // 名字从 x=600 开始，向右延伸到 x=1800，整体居中
   nameBox: {
-    x: 880,
+    x: 600,
     y: 780,
-    w: 920,
+    w: 1200,
     h: 140,
   },
-  // 问题1答案框（右侧暗色框）x=1200-1960, y=2050-2270
+  // 问题1答案框（精确测量: x=1105, y=2090, w=845, h=230）
   q1Box: {
-    x: 1200,
-    y: 2050,
-    w: 760,
-    h: 220,
+    x: 1105,
+    y: 2090,
+    w: 845,
+    h: 230,
   },
-  // 问题2答案框（右侧暗色框）x=1200-1960, y=2330-2510
+  // 问题2答案框（精确测量: x=1100, y=2340, w=850, h=250）
   q2Box: {
-    x: 1200,
-    y: 2330,
-    w: 760,
-    h: 180,
+    x: 1100,
+    y: 2340,
+    w: 850,
+    h: 250,
   },
-  // 问题3答案框（右侧暗色框）x=1200-1960, y=2590-2770
+  // 问题3答案框（精确测量: x=1109, y=2600, w=841, h=260）
   q3Box: {
-    x: 1200,
-    y: 2590,
-    w: 760,
-    h: 180,
+    x: 1109,
+    y: 2600,
+    w: 841,
+    h: 260,
   },
 };
 
@@ -106,6 +109,127 @@ function drawWrappedText(
   });
 }
 
+// 绘制海报内容的通用函数（支持任意 scale）
+function renderPosterContent(
+  ctx: CanvasRenderingContext2D,
+  bgImage: HTMLImageElement | null,
+  photoImage: HTMLImageElement | null,
+  data: PosterData,
+  canvasW: number,
+  canvasH: number,
+  bgW: number,
+  bgH: number
+) {
+  // 计算背景图到画布的缩放比
+  const scaleX = canvasW / bgW;
+  const scaleY = canvasH / bgH;
+  // 使用等比缩放（cover 模式）
+  const bgScale = Math.max(scaleX, scaleY);
+  const bgDrawW = bgW * bgScale;
+  const bgDrawH = bgH * bgScale;
+  const bgOffX = (canvasW - bgDrawW) / 2;
+  const bgOffY = (canvasH - bgDrawH) / 2;
+
+  // 将 REGIONS 坐标从背景图空间转换到画布空间
+  const toCanvas = (v: number, isX: boolean) => {
+    return isX ? v * bgScale + bgOffX : v * bgScale + bgOffY;
+  };
+  const scaleLen = (v: number) => v * bgScale;
+
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  // 1. 绘制背景
+  if (bgImage) {
+    ctx.drawImage(bgImage, bgOffX, bgOffY, bgDrawW, bgDrawH);
+  } else {
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(0, 0, canvasW, canvasH);
+  }
+
+  // 2. 绘制照片
+  const pb = REGIONS.photoBox;
+  if (photoImage && data.photoUrl) {
+    const boxX = toCanvas(pb.x, true);
+    const boxY = toCanvas(pb.y, false);
+    const boxW = scaleLen(pb.w);
+    const boxH = scaleLen(pb.h);
+
+    const photoRatio = photoImage.naturalWidth / photoImage.naturalHeight;
+    const boxRatio = boxW / boxH;
+    let baseW: number, baseH: number;
+    if (photoRatio > boxRatio) {
+      baseH = boxH;
+      baseW = baseH * photoRatio;
+    } else {
+      baseW = boxW;
+      baseH = baseW / photoRatio;
+    }
+
+    const scaledW = baseW * data.imgScale;
+    const scaledH = baseH * data.imgScale;
+    const drawX = boxX + (boxW - scaledW) / 2 + data.imgOffsetX * bgScale;
+    const drawY = boxY + (boxH - scaledH) / 2 + data.imgOffsetY * bgScale;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(boxX, boxY, boxW, boxH);
+    ctx.clip();
+    ctx.drawImage(photoImage, drawX, drawY, scaledW, scaledH);
+    ctx.restore();
+  }
+
+  // 3. 绘制名字（探索者右侧，居中，字号放大）
+  const nb = REGIONS.nameBox;
+  if (data.name) {
+    ctx.save();
+    let fontSize = Math.round(36 * bgScale);
+    ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const maxW = scaleLen(nb.w) - scaleLen(20);
+    const tw = ctx.measureText(data.name).width;
+    if (tw > maxW) {
+      fontSize = Math.floor(fontSize * maxW / tw);
+      ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+    }
+    const centerX = toCanvas(nb.x + nb.w / 2, true);
+    const centerY = toCanvas(nb.y + nb.h / 2, false);
+    ctx.fillText(data.name, centerX, centerY);
+    ctx.restore();
+  }
+
+  // 4. 绘制答案文字（自动换行，垂直居中）
+  const answerBoxes = [
+    { box: REGIONS.q1Box, text: data.coolest },
+    { box: REGIONS.q2Box, text: data.reason },
+    { box: REGIONS.q3Box, text: data.harvest },
+  ];
+
+  answerBoxes.forEach(({ box, text }) => {
+    if (!text) return;
+    ctx.save();
+    const fontSize = Math.round(44 * bgScale);
+    ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    const paddingX = scaleLen(20);
+    const maxWidth = scaleLen(box.w) - paddingX * 2;
+    const lineHeight = fontSize * 1.4;
+    drawWrappedText(
+      ctx,
+      text,
+      toCanvas(box.x, true) + paddingX,
+      toCanvas(box.y, false),
+      maxWidth,
+      lineHeight,
+      scaleLen(box.h)
+    );
+    ctx.restore();
+  });
+}
+
 const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas(
   { data, onChange, width = 440 },
   ref
@@ -118,7 +242,7 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
 
-  // Canvas display scale
+  // Canvas display scale (preview)
   const displayScale = width / PREVIEW_W;
   const height = Math.round(PREVIEW_H * displayScale);
 
@@ -129,104 +253,17 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const s = displayScale;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // 1. Draw background
-    if (bgImageRef.current && bgLoadedRef.current) {
-      ctx.drawImage(bgImageRef.current, 0, 0, canvas.width, canvas.height);
-    } else {
-      ctx.fillStyle = "#1a1a2e";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    // 2. Draw photo in photo box (fully cover the white/gray area)
-    const pb = REGIONS.photoBox;
-    if (photoImageRef.current && data.photoUrl) {
-      const photo = photoImageRef.current;
-      const boxW = pb.w * s;
-      const boxH = pb.h * s;
-      const boxX = pb.x * s;
-      const boxY = pb.y * s;
-
-      const photoRatio = photo.naturalWidth / photo.naturalHeight;
-      const boxRatio = boxW / boxH;
-      let baseW: number, baseH: number;
-      // Always cover: use the larger dimension to fill
-      if (photoRatio > boxRatio) {
-        baseH = boxH;
-        baseW = baseH * photoRatio;
-      } else {
-        baseW = boxW;
-        baseH = baseW / photoRatio;
-      }
-
-      const scaledW = baseW * data.imgScale;
-      const scaledH = baseH * data.imgScale;
-
-      const drawX = boxX + (boxW - scaledW) / 2 + data.imgOffsetX * s;
-      const drawY = boxY + (boxH - scaledH) / 2 + data.imgOffsetY * s;
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(boxX, boxY, boxW, boxH);
-      ctx.clip();
-      ctx.drawImage(photo, drawX, drawY, scaledW, scaledH);
-      ctx.restore();
-    }
-
-    // 3. Draw name in nameBox (探索者右侧，居中显示)
-    const nb = REGIONS.nameBox;
-    if (data.name) {
-      ctx.save();
-      let fontSize = Math.round(28 * s);
-      ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      // Auto-shrink if too wide
-      const maxW = nb.w * s - 20 * s;
-      let tw = ctx.measureText(data.name).width;
-      if (tw > maxW) {
-        fontSize = Math.floor(fontSize * maxW / tw);
-        ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
-      }
-      // 居中于 nameBox 的水平中心
-      const centerX = (nb.x + nb.w / 2) * s;
-      ctx.fillText(data.name, centerX, (nb.y + nb.h / 2) * s);
-      ctx.restore();
-    }
-
-    // 4. Draw answer texts with word wrap (字体放大，垂直居中)
-    const answerBoxes = [
-      { box: REGIONS.q1Box, text: data.coolest },
-      { box: REGIONS.q2Box, text: data.reason },
-      { box: REGIONS.q3Box, text: data.harvest },
-    ];
-
-    answerBoxes.forEach(({ box, text }) => {
-      if (!text) return;
-      ctx.save();
-      const fontSize = Math.round(44 * s);
-      ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
-      ctx.fillStyle = "#ffffff";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      const paddingX = 20 * s;
-      const maxWidth = box.w * s - paddingX * 2;
-      const lineHeight = fontSize * 1.4;
-      drawWrappedText(
-        ctx,
-        text,
-        box.x * s + paddingX,
-        box.y * s,
-        maxWidth,
-        lineHeight,
-        box.h * s
-      );
-      ctx.restore();
-    });
-  }, [data, displayScale]);
+    renderPosterContent(
+      ctx,
+      bgLoadedRef.current ? bgImageRef.current : null,
+      photoImageRef.current,
+      data,
+      canvas.width,
+      canvas.height,
+      PREVIEW_W,
+      PREVIEW_H
+    );
+  }, [data]);
 
   // Load background image once
   useEffect(() => {
@@ -369,116 +406,37 @@ const PosterCanvas = forwardRef<PosterCanvasHandle, Props>(function PosterCanvas
     dragStartRef.current = null;
   }, []);
 
-  const cursorStyle =
-    data.photoUrl &&
-    (isDragging
-      ? "grabbing"
-      : "grab")
-    ? "default"
-    : "default";
+  const cursorStyle = data.photoUrl ? (isDragging ? "grabbing" : "grab") : "default";
 
-  // Expose exportImage: renders at full resolution and returns PNG data URL
+  // Expose exportImage: renders at A4 resolution (2480x3508) and returns PNG data URL
   useImperativeHandle(
     ref,
     () => ({
       exportImage: () =>
         new Promise<string>((resolve, reject) => {
           const offscreen = document.createElement("canvas");
-          offscreen.width = PREVIEW_W;
-          offscreen.height = PREVIEW_H;
+          offscreen.width = A4_W;
+          offscreen.height = A4_H;
           const ctx = offscreen.getContext("2d");
           if (!ctx) {
             reject(new Error("Canvas not available"));
             return;
           }
-          const s = 1;
+
           const render = () => {
-            ctx.clearRect(0, 0, PREVIEW_W, PREVIEW_H);
-            // 1. Background
-            if (bgImageRef.current && bgLoadedRef.current) {
-              ctx.drawImage(bgImageRef.current, 0, 0, PREVIEW_W, PREVIEW_H);
-            } else {
-              ctx.fillStyle = "#1a1a2e";
-              ctx.fillRect(0, 0, PREVIEW_W, PREVIEW_H);
-            }
-            // 2. Photo (fully cover white area)
-            const pb = REGIONS.photoBox;
-            if (photoImageRef.current && data.photoUrl) {
-              const photo = photoImageRef.current;
-              const boxW = pb.w * s;
-              const boxH = pb.h * s;
-              const boxX = pb.x * s;
-              const boxY = pb.y * s;
-              const photoRatio = photo.naturalWidth / photo.naturalHeight;
-              const boxRatio = boxW / boxH;
-              let baseW: number, baseH: number;
-              if (photoRatio > boxRatio) {
-                baseH = boxH;
-                baseW = baseH * photoRatio;
-              } else {
-                baseW = boxW;
-                baseH = baseW / photoRatio;
-              }
-              const scaledW = baseW * data.imgScale;
-              const scaledH = baseH * data.imgScale;
-              const drawX = boxX + (boxW - scaledW) / 2 + data.imgOffsetX * s;
-              const drawY = boxY + (boxH - scaledH) / 2 + data.imgOffsetY * s;
-              ctx.save();
-              ctx.beginPath();
-              ctx.rect(boxX, boxY, boxW, boxH);
-              ctx.clip();
-              ctx.drawImage(photo, drawX, drawY, scaledW, scaledH);
-              ctx.restore();
-            }
-            // 3. Name in nameBox (居中显示)
-            const nb = REGIONS.nameBox;
-            if (data.name) {
-              ctx.save();
-              let fontSize = Math.round(28 * s);
-              ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
-              ctx.fillStyle = "#ffffff";
-              ctx.textAlign = "center";
-              ctx.textBaseline = "middle";
-              const maxW = nb.w * s - 20 * s;
-              const tw = ctx.measureText(data.name).width;
-              if (tw > maxW) {
-                fontSize = Math.floor(fontSize * maxW / tw);
-                ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
-              }
-              const centerX = (nb.x + nb.w / 2) * s;
-              ctx.fillText(data.name, centerX, (nb.y + nb.h / 2) * s);
-              ctx.restore();
-            }
-            // 4. Answer texts with word wrap (字体放大，垂直居中)
-            const answerBoxes = [
-              { box: REGIONS.q1Box, text: data.coolest },
-              { box: REGIONS.q2Box, text: data.reason },
-              { box: REGIONS.q3Box, text: data.harvest },
-            ];
-            answerBoxes.forEach(({ box, text }) => {
-              if (!text) return;
-              ctx.save();
-              const fontSize = Math.round(44 * s);
-              ctx.font = `700 ${fontSize}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
-              ctx.fillStyle = "#ffffff";
-              ctx.textAlign = "left";
-              ctx.textBaseline = "middle";
-              const paddingX = 20 * s;
-              const maxWidth = box.w * s - paddingX * 2;
-              const lineHeight = fontSize * 1.4;
-              drawWrappedText(
-                ctx,
-                text,
-                box.x * s + paddingX,
-                box.y * s,
-                maxWidth,
-                lineHeight,
-                box.h * s
-              );
-              ctx.restore();
-            });
+            renderPosterContent(
+              ctx,
+              bgLoadedRef.current ? bgImageRef.current : null,
+              photoImageRef.current,
+              data,
+              A4_W,
+              A4_H,
+              PREVIEW_W,
+              PREVIEW_H
+            );
             resolve(offscreen.toDataURL("image/png"));
           };
+
           if (bgLoadedRef.current) {
             render();
           } else {
